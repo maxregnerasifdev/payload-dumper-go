@@ -11,14 +11,10 @@ import (
     "runtime"
     "strings"
     "time"
-)
 
-type PayloadExtractor struct {
-    sourceFile      string
-    targetFile      string
-    outputDirectory string
-    concurrency     int
-}
+    "github.com/ssut/payload-dumper-go/pkg/payload"
+    "github.com/ssut/payload-dumper-go/pkg/extractor"
+)
 
 func extractPayloadBin(filename string, prefix string) string {
     zipReader, err := zip.OpenReader(filename)
@@ -49,124 +45,135 @@ func extractPayloadBin(filename string, prefix string) string {
     return ""
 }
 
-func NewPayloadExtractor() *PayloadExtractor {
-    return &PayloadExtractor{
-        concurrency: runtime.NumCPU(),
+func processPayload(payloadPath string, outputDir string, list bool, partitions string, concurrency int) error {
+    p := payload.NewPayload(payloadPath)
+    if err := p.Open(); err != nil {
+        return fmt.Errorf("failed to open payload: %v", err)
     }
-}
+    defer p.Close()
 
-func (pe *PayloadExtractor) processPayloads() error {
-    // Process source payload
-    sourcePayload := NewPayload(pe.sourceFile)
-    if err := sourcePayload.Open(); err != nil {
-        return fmt.Errorf("failed to open source payload: %v", err)
-    }
-    defer sourcePayload.file.Close()
-
-    // Process target payload
-    targetPayload := NewPayload(pe.targetFile)
-    if err := targetPayload.Open(); err != nil {
-        return fmt.Errorf("failed to open target payload: %v", err)
-    }
-    defer targetPayload.file.Close()
-
-    // Initialize both payloads
-    if err := sourcePayload.Init(); err != nil {
-        return fmt.Errorf("failed to initialize source payload: %v", err)
-    }
-    if err := targetPayload.Init(); err != nil {
-        return fmt.Errorf("failed to initialize target payload: %v", err)
+    if err := p.Init(); err != nil {
+        return fmt.Errorf("failed to initialize payload: %v", err)
     }
 
-    // Set concurrency for both payloads
-    sourcePayload.SetConcurrency(pe.concurrency)
-    targetPayload.SetConcurrency(pe.concurrency)
-
-    // Create output directories
-    sourcePath := filepath.Join(pe.outputDirectory, "source")
-    targetPath := filepath.Join(pe.outputDirectory, "target")
-
-    for _, dir := range []string{sourcePath, targetPath} {
-        if err := os.MkdirAll(dir, 0755); err != nil {
-            return fmt.Errorf("failed to create directory %s: %v", dir, err)
-        }
+    if list {
+        p.PrintInfo()
+        return nil
     }
 
-    // Extract payloads
-    fmt.Printf("Extracting source payload to: %s\n", sourcePath)
-    if err := sourcePayload.ExtractAll(sourcePath); err != nil {
-        return fmt.Errorf("failed to extract source payload: %v", err)
+    if err := p.VerifyPayload(); err != nil {
+        return fmt.Errorf("payload verification failed: %v", err)
     }
 
-    fmt.Printf("Extracting target payload to: %s\n", targetPath)
-    if err := targetPayload.ExtractAll(targetPath); err != nil {
-        return fmt.Errorf("failed to extract target payload: %v", err)
-    }
+    p.SetConcurrency(concurrency)
+    fmt.Printf("Number of workers: %d\n", p.GetConcurrency())
 
-    return nil
+    if partitions != "" {
+        return p.ExtractSelected(outputDir, strings.Split(partitions, ","))
+    }
+    return p.ExtractAll(outputDir)
 }
 
 func main() {
-    pe := NewPayloadExtractor()
+    runtime.GOMAXPROCS(runtime.NumCPU())
 
     var (
-        list       bool
-        partitions string
+        sourceFile      string
+        targetFile      string
+        outputDirectory string
+        list           bool
+        partitions     string
+        concurrency    int
+        version        bool
     )
 
-    // Define command line flags
-    flag.StringVar(&pe.sourceFile, "source", "", "Source payload.bin or zip file")
-    flag.StringVar(&pe.targetFile, "target", "", "Target payload.bin or zip file")
-    flag.StringVar(&pe.outputDirectory, "o", "", "Output directory (shorthand)")
-    flag.StringVar(&pe.outputDirectory, "output", "", "Output directory")
-    flag.IntVar(&pe.concurrency, "c", runtime.NumCPU(), "Number of concurrent workers")
+    flag.StringVar(&sourceFile, "source", "", "Source payload.bin or zip file")
+    flag.StringVar(&targetFile, "target", "", "Target payload.bin or zip file (optional)")
+    flag.StringVar(&outputDirectory, "o", "", "Output directory")
+    flag.StringVar(&outputDirectory, "output", "", "Output directory")
     flag.BoolVar(&list, "l", false, "List partitions only")
+    flag.BoolVar(&list, "list", false, "List partitions only")
     flag.StringVar(&partitions, "p", "", "Extract specific partitions (comma-separated)")
+    flag.StringVar(&partitions, "partitions", "", "Extract specific partitions (comma-separated)")
+    flag.IntVar(&concurrency, "c", runtime.NumCPU(), "Number of concurrent workers")
+    flag.IntVar(&concurrency, "concurrency", runtime.NumCPU(), "Number of concurrent workers")
+    flag.BoolVar(&version, "v", false, "Show version information")
+    flag.BoolVar(&version, "version", false, "Show version information")
 
     flag.Parse()
 
-    // Validate required arguments
-    if pe.sourceFile == "" || pe.targetFile == "" {
-        fmt.Println("Both source and target files are required")
-        usage()
+    if version {
+        payload.PrintVersionInfo()
+        return
     }
 
-    // Create output directory if not specified
-    if pe.outputDirectory == "" {
+    if sourceFile == "" && flag.NArg() > 0 {
+        sourceFile = flag.Arg(0)
+    }
+
+    if sourceFile == "" {
+        fmt.Fprintf(os.Stderr, "Usage: %s [options] <input_file>\n", os.Args[0])
+        flag.PrintDefaults()
+        os.Exit(2)
+    }
+
+    // Verify source file exists
+    if _, err := os.Stat(sourceFile); os.IsNotExist(err) {
+        log.Fatalf("Source file does not exist: %s\n", sourceFile)
+    }
+
+    // Set output directory if not specified
+    if outputDirectory == "" {
         now := time.Now()
-        pe.outputDirectory = fmt.Sprintf("extracted_%d%02d%02d_%02d%02d%02d",
+        outputDirectory = fmt.Sprintf("extracted_%d%02d%02d_%02d%02d%02d",
             now.Year(), now.Month(), now.Day(),
             now.Hour(), now.Minute(), now.Second())
     }
 
+    // Create output directory
+    if err := os.MkdirAll(outputDirectory, 0755); err != nil {
+        log.Fatalf("Failed to create output directory: %v\n", err)
+    }
+
     // Handle zip files
-    if strings.HasSuffix(pe.sourceFile, ".zip") {
-        fmt.Println("Extracting payload.bin from source zip...")
-        if extracted := extractPayloadBin(pe.sourceFile, "source"); extracted != "" {
-            pe.sourceFile = extracted
-            defer os.Remove(extracted)
+    sourcePayloadBin := sourceFile
+    if strings.HasSuffix(sourceFile, ".zip") {
+        fmt.Println("Extracting payload.bin from source archive...")
+        sourcePayloadBin = extractPayloadBin(sourceFile, "source")
+        if sourcePayloadBin == "" {
+            log.Fatal("Failed to extract payload.bin from source archive")
+        }
+        defer os.Remove(sourcePayloadBin)
+    }
+
+    // Handle dual payload mode
+    if targetFile != "" {
+        targetPayloadBin := targetFile
+        if strings.HasSuffix(targetFile, ".zip") {
+            fmt.Println("Extracting payload.bin from target archive...")
+            targetPayloadBin = extractPayloadBin(targetFile, "target")
+            if targetPayloadBin == "" {
+                log.Fatal("Failed to extract payload.bin from target archive")
+            }
+            defer os.Remove(targetPayloadBin)
+        }
+
+        ext := extractor.NewPayloadExtractor()
+        ext.SetSourceFile(sourcePayloadBin)
+        ext.SetTargetFile(targetPayloadBin)
+        ext.SetOutputDirectory(outputDirectory)
+        ext.SetConcurrency(concurrency)
+
+        if err := ext.Process(); err != nil {
+            log.Fatalf("Error processing payloads: %v", err)
+        }
+    } else {
+        // Single payload mode
+        if err := processPayload(sourcePayloadBin, outputDirectory, list, partitions, concurrency); err != nil {
+            log.Fatal(err)
         }
     }
 
-    if strings.HasSuffix(pe.targetFile, ".zip") {
-        fmt.Println("Extracting payload.bin from target zip...")
-        if extracted := extractPayloadBin(pe.targetFile, "target"); extracted != "" {
-            pe.targetFile = extracted
-            defer os.Remove(extracted)
-        }
-    }
-
-    // Process the payloads
-    if err := pe.processPayloads(); err != nil {
-        log.Fatalf("Error processing payloads: %v", err)
-    }
-
-    fmt.Println("Payload extraction completed successfully!")
-}
-
-func usage() {
-    fmt.Fprintf(os.Stderr, "Usage: %s -source <source_file> -target <target_file> [options]\n", os.Args[0])
-    fmt.Fprintf(os.Stderr, "\nOptions:\n")
-    flag.PrintDefaults()
-    os.Exit(2)
+    fmt.Printf("\nExtraction completed successfully!\n")
+    fmt.Printf("Output directory: %s\n", outputDirectory)
 }
