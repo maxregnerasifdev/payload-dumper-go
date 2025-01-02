@@ -426,4 +426,7 @@ func (p *Payload) VerifyPayload() error {
     // Verify manifest
     if p.deltaArchiveManifest == nil {
         return errors.New("manifest not loaded")
-    
+    }
+
+    return nil
+}
