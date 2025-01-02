@@ -5,6 +5,7 @@ go 1.18
 require (
     github.com/dustin/go-humanize v1.0.1
     github.com/golang/protobuf v1.5.3
+    github.com/spencercw/go-xz v0.0.0-20181128201811-c82a2123b492
     github.com/vbauerster/mpb/v5 v5.4.0
     github.com/valyala/gozstd v1.21.1
     github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8
@@ -20,4 +21,7 @@ require (
     github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
     github.com/mattn/go-runewidth v0.0.9
     golang.org/x/sys v0.22.0
+    github.com/ssut/payload-dumper-go v0.0.0-20240227000000-000000000000
 )
+
+replace github.com/ssut/payload-dumper-go => ./
