@@ -15,5 +15,5 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build
-        run: go mod download github.com/golang/protobuf && go mod download github.com/klauspost/compress && go build .
+        run: go mod download github.com/golang/protobuf && go mod download github.com/modern-go/concurrent && go mod download github.com/klauspost/compress && go build .
 
