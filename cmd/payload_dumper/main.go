@@ -10,6 +10,7 @@ import (
     "runtime"
     "strings"
     "time"
+    "github.com/ssut/payload-dumper-go/pkg/payload"
 )
 
 func extractPayloadBin(filename string) string {
@@ -39,6 +40,12 @@ func extractPayloadBin(filename string) string {
         }
     }
     return ""
+}
+
+func usage() {
+    fmt.Fprintf(os.Stderr, "Usage: %s [options] [inputfile]\n", os.Args[0])
+    flag.PrintDefaults()
+    os.Exit(2)
 }
 
 func main() {
@@ -82,10 +89,44 @@ func main() {
     }
 
     fmt.Printf("payload.bin: %s\n", payloadBin)
-}
+    
+    p := payload.NewPayload(payloadBin)
+    defer p.Close()
 
-func usage() {
-    fmt.Fprintf(os.Stderr, "Usage: %s [options] [inputfile]\n", os.Args[0])
-    flag.PrintDefaults()
-    os.Exit(2)
+    if err := p.Open(); err != nil {
+        log.Fatal(err)
+    }
+
+    if err := p.Init(); err != nil {
+        log.Fatal(err)
+    }
+
+    if list {
+        p.PrintInfo()
+        return
+    }
+
+    if outputDirectory == "" {
+        outputDirectory = "output"
+    }
+
+    if err := os.MkdirAll(outputDirectory, 0o755); err != nil {
+        log.Fatal(err)
+    }
+
+    start := time.Now()
+    var err error
+    if partitions != "" {
+        parts := strings.Split(partitions, ",")
+        err = p.ExtractSelected(outputDirectory, parts)
+    } else {
+        err = p.ExtractAll(outputDirectory)
+    }
+
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    elapsed := time.Since(start)
+    fmt.Printf("\nExtraction completed in %s\n", elapsed)
 }
