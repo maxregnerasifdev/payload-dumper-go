@@ -4,7 +4,7 @@ go 1.18
 
 require (
     github.com/dustin/go-humanize v1.0.1
-    github.com/golang/protobuf v1.5.3
+    github.com/golang/protobuf
     github.com/vbauerster/mpb/v5 v5.4.0
     github.com/valyala/gozstd v1.21.1
     github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8
