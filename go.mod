@@ -4,6 +4,7 @@ go 1.18
 
 require (
     github.com/dustin/go-humanize v1.0.1
+    github.com/golang/protobuf v1.5.3
     github.com/vbauerster/mpb/v5 v5.4.0
     github.com/valyala/gozstd v1.21.1
     github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8
@@ -13,7 +14,6 @@ require (
 require (
     github.com/VividCortex/ewma v1.1.1 // indirect
     github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d // indirect
-    github.com/golang/protobuf v1.5.3 // indirect
     github.com/klauspost/compress v1.17.7 // indirect
     github.com/mattn/go-runewidth v0.0.9 // indirect
     github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
