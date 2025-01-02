@@ -38,6 +38,6 @@ require (
     github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 )
 
-replace (
-    github.com/spencercw/go-xz => github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8
+require (
+    github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8
 )
