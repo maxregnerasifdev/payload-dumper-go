@@ -4,7 +4,7 @@ go 1.18
 
 require (
     github.com/dustin/go-humanize v1.0.1
-    github.com/golang/protobuf
+    github.com/golang/protobuf v1.5.3
     github.com/vbauerster/mpb/v5 v5.4.0
     github.com/valyala/gozstd v1.21.1
     github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8
@@ -16,11 +16,8 @@ require (
     github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd
     github.com/modern-go/reflect2 v1.0.2
     github.com/ulikunitz/xz v0.5.11
-)
-
-require (
-    github.com/VividCortex/ewma v1.1.1 // indirect
-    github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d // indirect
-    github.com/mattn/go-runewidth v0.0.9 // indirect
-    golang.org/x/sys v0.22.0 // indirect
+    github.com/VividCortex/ewma v1.1.1
+    github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
+    github.com/mattn/go-runewidth v0.0.9
+    golang.org/x/sys v0.22.0
 )
