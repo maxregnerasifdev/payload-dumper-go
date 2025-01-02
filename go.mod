@@ -21,6 +21,7 @@ require (
     github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
     github.com/mattn/go-runewidth v0.0.9
     golang.org/x/sys v0.22.0
+    github.com/xi2/xz
     github.com/ssut/payload-dumper-go v0.0.0-20240227000000-000000000000
 )
 
